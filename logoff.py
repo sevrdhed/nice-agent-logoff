@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request 
+from flask import Flask, render_template, request
 from dotenv import load_dotenv
 import requests
 import urllib3
+import csv
+import io
 import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -57,25 +59,48 @@ def logoff_agent(token, agent_id):
       else:
           print("Logoff failed:", response.status_code, response.text)
           return False
-  # Handles web requests to the page
+# Handles web requests to the page
 @app.route("/", methods=["GET", "POST"])
 def index():
-      message = None
+    results = []
 
-      if request.method == "POST":
-          agent_id = request.form["agent_id"]
-          token    = get_bearer_token()
+    if request.method == "POST":
+        agent_ids = []
 
-          if token:
-              success = logoff_agent(token, agent_id)
-              if success:
-                  message = f"Agent {agent_id} successfully logged off"
-              else:
-                  message = f"Failed to log off agent {agent_id}"
-          else:
-              message = "Authentication failed"
+        # get IDs from the CSV file if one was uploaded
+        csv_file = request.files.get("csv_file")
+        if csv_file and csv_file.filename != "":
+            stream = io.StringIO(csv_file.stream.read().decode("utf-8"))
+            reader = csv.reader(stream)
+            for row in reader:
+                for cell in row:
+                    cell = cell.strip()
+                    if cell:
+                        agent_ids.append(cell)
 
-      return render_template("index.html", message=message)
+        # get IDs from the text input if provided
+        text_input = request.form.get("agent_ids", "").strip()
+        if text_input:
+            for agent_id in text_input.split(","):
+                agent_id = agent_id.strip()
+                if agent_id:
+                    agent_ids.append(agent_id)
+
+        if agent_ids:
+            token = get_bearer_token()
+            if token:
+                for agent_id in agent_ids:
+                    success = logoff_agent(token, agent_id)
+                    if success:
+                        results.append({"success": True,  "message": f"Agent {agent_id} successfully logged off"})
+                    else:
+                        results.append({"success": False, "message": f"Failed to log off agent {agent_id}"})
+            else:
+                results.append({"success": False, "message": "Authentication failed"})
+        else:
+            results.append({"success": False, "message": "No agent IDs provided"})
+
+    return render_template("index.html", results=results)
 
 if __name__ == "__main__":
     app.run(debug=True)
