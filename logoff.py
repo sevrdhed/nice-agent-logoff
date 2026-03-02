@@ -15,7 +15,7 @@ client_secret = os.getenv("NICE_CLIENT_SECRET")
 
 app = Flask(__name__)
 
-#This function gets the token from NICE
+#This authentication function gets the token from NICE
 def get_bearer_token():
     url = "https://cxone.niceincontact.com/auth/token"
 
@@ -57,7 +57,7 @@ def logoff_agent(token, agent_id):
       else:
           print("Logoff failed:", response.status_code, response.text)
           return False
-  # NEW - handles web requests to the page
+  # Handles web requests to the page
 @app.route("/", methods=["GET", "POST"])
 def index():
       message = None
@@ -79,6 +79,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True)
-#this is where the application actually runs - retrieving a token, and passing it to the logoff function
-# token = get_bearer_token()
-# logoff_agent(token, "19858540")   # replace with a real agent ID
