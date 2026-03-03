@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
+from datetime import datetime
 import requests
 import urllib3
 import csv
@@ -10,12 +12,26 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 
-api_key    = os.getenv("NICE_API_KEY")
-api_secret = os.getenv("NICE_API_SECRET")
-client_id = os.getenv("NICE_CLIENT_ID")
+api_key       = os.getenv("NICE_API_KEY")
+api_secret    = os.getenv("NICE_API_SECRET")
+client_id     = os.getenv("NICE_CLIENT_ID")
 client_secret = os.getenv("NICE_CLIENT_SECRET")
 
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///logoff.db"
+db = SQLAlchemy(app)
+
+
+class LogEntry(db.Model):
+    id        = db.Column(db.Integer, primary_key=True)
+    agent_id  = db.Column(db.String, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    status    = db.Column(db.String, nullable=False)
+    message   = db.Column(db.String, nullable=False)
+
+
+with app.app_context():
+    db.create_all()
 
 #This authentication function gets the token from NICE
 def get_bearer_token():
@@ -92,9 +108,16 @@ def index():
                 for agent_id in agent_ids:
                     success = logoff_agent(token, agent_id)
                     if success:
-                        results.append({"success": True,  "message": f"Agent {agent_id} successfully logged off"})
+                        message = f"Agent {agent_id} successfully logged off"
+                        status  = "success"
                     else:
-                        results.append({"success": False, "message": f"Failed to log off agent {agent_id}"})
+                        message = f"Failed to log off agent {agent_id}"
+                        status  = "failed"
+
+                    db.session.add(LogEntry(agent_id=agent_id, status=status, message=message))
+                    results.append({"success": success, "message": message})
+
+                db.session.commit()
             else:
                 results.append({"success": False, "message": "Authentication failed"})
         else:
