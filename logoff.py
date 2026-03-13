@@ -21,7 +21,6 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///logoff.db"
 db = SQLAlchemy(app)
 
-
 class LogEntry(db.Model):
     id        = db.Column(db.Integer, primary_key=True)
     agent_id  = db.Column(db.String, nullable=False)
@@ -124,6 +123,13 @@ def index():
             results.append({"success": False, "message": "No agent IDs provided"})
 
     return render_template("index.html", results=results)
+
+# Handles the log viewer page
+@app.route("/logs")
+def logs():
+    entries = LogEntry.query.order_by(LogEntry.timestamp.desc()).all()
+    return render_template("logs.html", entries=entries)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
