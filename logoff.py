@@ -1,21 +1,23 @@
 from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
-from dotenv import load_dotenv
 from datetime import datetime
 import requests
 import urllib3
+import boto3
 import csv
 import io
 import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-load_dotenv()
+def get_ssm_param(name):
+    ssm = boto3.client("ssm", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    return ssm.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
 
-api_key       = os.getenv("NICE_API_KEY")
-api_secret    = os.getenv("NICE_API_SECRET")
-client_id     = os.getenv("NICE_CLIENT_ID")
-client_secret = os.getenv("NICE_CLIENT_SECRET")
+api_key       = get_ssm_param("/nice-logoff/NICE_API_KEY")
+api_secret    = get_ssm_param("/nice-logoff/NICE_API_SECRET")
+client_id     = get_ssm_param("/nice-logoff/NICE_CLIENT_ID")
+client_secret = get_ssm_param("/nice-logoff/NICE_CLIENT_SECRET")
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///logoff.db"
