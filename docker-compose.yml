@@ -2,8 +2,7 @@ services:
   app:
     build: .
     restart: always
-    env_file: .env
-    volumes:
+volumes:
       - db_data:/app/instance
     expose:
       - "8000"
